@@ -1,6 +1,20 @@
 Reusable Slice of References
 ============================
 
+* Crate: https://crates.io/crates/rsor
+* Documentation: https://docs.rs/rsor
+
+
+Usage
+-----
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+rsor = "0.1"
+```
+
 
 Related Crates
 --------------
