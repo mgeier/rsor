@@ -188,6 +188,13 @@ use std::mem;
 
 /// Reusable slice of references.
 ///
+/// Any method that adds references (`&T` or `&mut T`) to a `Slice`
+/// borrows it mutably (using `&mut self`) and
+/// returns a slice of references (`&[&T]` or `&mut [&mut T]`, respectively).
+/// The references are only available while the returned slice is alive.
+/// After that, the `Slice` is logically empty again and can be reused
+/// (using references with a possibly different lifetime).
+///
 /// *See also the [crate-level documentation](crate).*
 pub struct Slice<T: 'static + ?Sized> {
     /// Pointer and capacity of a `Vec`.
@@ -362,6 +369,26 @@ impl<T: 'static + ?Sized> Drop for Slice<T> {
         }
     }
 }
+
+/// A `Slice` can be moved between threads.
+///
+/// However, it cannot be moved while it's in use (because it's borrowed).
+/// When it's not in use, it doesn't contain any elements.
+/// Therefore, we don't have to care about whether `T` implements `Send` and/or `Sync`.
+///
+/// # Examples
+///
+/// Despite [`std::rc::Rc`] decidedly not implementing [`Send`],
+/// a `Slice<Rc<T>>` can be sent between threads:
+///
+/// ```
+/// let myslice = rsor::Slice::<std::rc::Rc<i32>>::new();
+///
+/// std::thread::spawn(move || {
+///     assert_eq!(myslice.capacity(), 0);
+/// }).join().unwrap();
+/// ```
+unsafe impl<T: 'static + ?Sized> Send for Slice<T> {}
 
 #[cfg(test)]
 mod test {
