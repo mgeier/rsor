@@ -242,7 +242,7 @@ impl<T: 'static + ?Sized> Slice<T> {
     /// let mut myslice = Slice::<str>::new();
     /// let strings = {
     ///     let inner_scope = String::from("inner scope is too short-lived");
-    ///     let static_str = "&'static str is OK";
+    ///     let static_str = "static &str is OK";
     ///     myslice.fill(|mut v| {
     ///         v.push(&inner_scope);
     ///         v.push(static_str);
