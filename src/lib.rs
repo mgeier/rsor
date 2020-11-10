@@ -286,6 +286,30 @@ impl<T: 'static + ?Sized> Slice<T> {
     /// };
     /// assert_eq!(strings, ["same scope is OK", "static &str is OK"]);
     /// ```
+    ///
+    /// Yet another contrived example, this time to show that
+    /// the lifetimes `'a` and `'b` can be different:
+    ///
+    /// ```
+    /// use rsor::Slice;
+    ///
+    /// let data = 'a';
+    /// let outer_reference = {
+    ///     let mut myslice = Slice::new();
+    ///     let chars = myslice.fill(|mut v| {
+    ///         v.push(&data);
+    ///         v
+    ///     });
+    ///     chars[0]
+    /// };
+    /// assert_eq!(*outer_reference, 'a');
+    /// ```
+    ///
+    /// Note that the returned value `chars` has the type `&'a [&'b char]`,
+    /// where `'a` is the lifetime of the inner scope, while the lifetime `'b`
+    /// is valid until the end of the example.
+    /// This is why `outer_reference` (with lifetime `'b`) can still be accessed
+    /// when `myslice` and `chars` (with lifetime `'a`) have already gone out of scope.
     pub fn fill<'a, 'b, F>(&'a mut self, f: F) -> &'a [&'b T]
     where
         F: FnOnce(Vec<&'b T>) -> Vec<&'b T>,
