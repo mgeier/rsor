@@ -327,6 +327,24 @@ impl<T: 'static + ?Sized> Slice<T> {
     /// Returns a slice of mutable references that has been filled by the given function.
     ///
     /// Same as [`fill()`](Slice::fill), but for mutable references.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rsor::Slice;
+    ///
+    /// let mut data = 'a';
+    /// let outer_reference: &mut char = {
+    ///     let mut myslice = Slice::new();
+    ///     let chars = myslice.fill_mut(|mut v| {
+    ///         v.push(&mut data);
+    ///         v
+    ///     });
+    ///     &mut chars[0]
+    /// };
+    /// *outer_reference = 'z';
+    /// assert_eq!(data, 'z');
+    /// ```
     pub fn fill_mut<'a, 'b, F>(&'a mut self, f: F) -> &'a mut [&'b mut T]
     where
         F: FnOnce(Vec<&'b mut T>) -> Vec<&'b mut T>,
