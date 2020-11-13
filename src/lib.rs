@@ -363,6 +363,93 @@ impl<T: 'static + ?Sized> Slice<T> {
         })
     }
 
+    /// Returns a slice of references given a list of things that implement [`AsRef<T>`].
+    ///
+    /// # Examples
+    ///
+    /// Many things implement [`AsRef<T>`], for example [`Box<T>`]:
+    ///
+    /// ```
+    /// use rsor::Slice;
+    ///
+    /// let boxes = vec![Box::new(10), Box::new(20)];
+    /// let mut reusable_slice = Slice::new();
+    /// assert_eq!(reusable_slice.from_refs(&boxes), [&10, &20]);
+    /// ```
+    ///
+    /// [`String`]s have multiple [`AsRef`] implementations:
+    /// `AsRef<str>` and `AsRef<[u8]>` (and even more!):
+    ///
+    /// ```
+    /// # use rsor::Slice;
+    /// let strings = vec![String::from("one"), String::from("two")];
+    /// let mut reusable_slice1 = Slice::<str>::new();
+    /// let mut reusable_slice2 = Slice::<[u8]>::new();
+    /// assert_eq!(reusable_slice1.from_refs(&strings), strings);
+    /// assert_eq!(reusable_slice2.from_refs(&strings), [b"one", b"two"]);
+    /// ```
+    ///
+    /// A list of [`Vec`]s (or boxed slices etc.) can be turned into
+    /// a slice of slices (`&[&[T]]`) by using a `Slice<[T]>`:
+    ///
+    /// ```
+    /// # use rsor::Slice;
+    /// let vecs = vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]];
+    /// let mut reusable_slice = Slice::new();
+    /// assert_eq!(reusable_slice.from_refs(&vecs), vecs);
+    /// ```
+    pub fn from_refs<'a, 'b, R>(&'a mut self, refs: &'b [R]) -> &'a [&'b T]
+    where
+        R: AsRef<T> + 'b,
+    {
+        self.fill(move |mut v| {
+            v.extend(refs.iter().map(AsRef::as_ref));
+            v
+        })
+    }
+
+    /// Returns a mutable slice of references given a list of things that implement [`AsMut<T>`].
+    ///
+    /// This can be used like [`from_refs()`](Slice::from_refs),
+    /// but this time with mutable references:
+    ///
+    /// ```
+    /// use rsor::Slice;
+    ///
+    /// let mut boxes = vec![Box::new(10), Box::new(20)];
+    /// let mut reusable_slice = Slice::new();
+    /// let mut_slice = reusable_slice.from_muts(&mut boxes);
+    /// *mut_slice[1] = 30;
+    /// assert_eq!(boxes, [Box::new(10), Box::new(30)]);
+    /// ```
+    ///
+    /// ```
+    /// # use rsor::Slice;
+    /// let mut strings = vec![String::from("one"), String::from("two")];
+    /// let mut reusable_slice = Slice::<str>::new();
+    /// let mut_slice = reusable_slice.from_muts(&mut strings);
+    /// mut_slice[1].make_ascii_uppercase();
+    /// assert_eq!(strings, ["one", "TWO"]);
+    /// ```
+    ///
+    /// ```
+    /// # use rsor::Slice;
+    /// let mut vecs = vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]];
+    /// let mut reusable_slice = Slice::<[f32]>::new();
+    /// let mut_slice = reusable_slice.from_muts(&mut vecs);
+    /// mut_slice[1][2] += 4.0;
+    /// assert_eq!(vecs, [[1.0, 2.0, 3.0], [4.0, 5.0, 10.0]]);
+    /// ```
+    pub fn from_muts<'a, 'b, M>(&'a mut self, muts: &'b mut [M]) -> &'a mut [&'b mut T]
+    where
+        M: AsMut<T> + 'b,
+    {
+        self.fill_mut(move |mut v| {
+            v.extend(muts.iter_mut().map(AsMut::as_mut));
+            v
+        })
+    }
+
     /// Returns the number of references that can be used without reallocating.
     pub fn capacity(&self) -> usize {
         // NB: vec_data can only be None during `fill[_mut]()`, which has exclusive access.
