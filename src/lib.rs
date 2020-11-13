@@ -30,8 +30,8 @@
 //!
 //! * If all used lifetimes are compatible, a single [`Vec<&T>`](Vec) can be used and reused.
 //!
-//! * If the lifetimes are not compatible, but we don't care about allocating
-//!   at each invocation, a fresh [`Vec<&T>`](Vec) can be used each time,
+//! * If we don't care about allocating memory at each invocation,
+//!   a fresh [`Vec<&T>`](Vec) can be used each time,
 //!   allowing for different (and incompatible) lifetimes.
 //!
 //! The following example shows the problem with incompatible lifetimes.
