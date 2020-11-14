@@ -335,8 +335,8 @@ impl<T: 'static + ?Sized> Slice<T> {
     ///
     /// let mut data = 'a';
     /// let outer_reference: &mut char = {
-    ///     let mut myslice = Slice::new();
-    ///     let chars = myslice.fill_mut(|mut v| {
+    ///     let mut reusable_slice = Slice::new();
+    ///     let chars = reusable_slice.fill_mut(|mut v| {
     ///         v.push(&mut data);
     ///         v
     ///     });
