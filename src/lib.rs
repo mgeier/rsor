@@ -340,7 +340,7 @@ impl<T: 'static + ?Sized> Slice<T> {
     ///         v.push(&mut data);
     ///         v
     ///     });
-    ///     &mut chars[0]
+    ///     chars[0]
     /// };
     /// *outer_reference = 'z';
     /// assert_eq!(data, 'z');
