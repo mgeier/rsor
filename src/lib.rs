@@ -184,6 +184,33 @@
 //! all other pointers are supposed to be valid for the lifetime `'b`.
 //! The caller has to make sure that this is actually the case.
 //! This is one of the many reasons why this function is marked as `unsafe`!
+//!
+//! # Deeper Nesting
+//!
+//! The motivation for creating this crate was to enable *slices of slices*,
+//! as shown in the examples above.
+//! However, it turns out that it is possible to have deeper nesting, for example
+//! *slices of slices of slices*:
+//!
+//! ```
+//! use rsor::Slice;
+//!
+//! let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+//! let mut level0 = Slice::with_capacity(6);
+//! let mut level1 = Slice::with_capacity(2);
+//! let sosos = level1.from_iter(level0.from_iter(data.chunks(2)).chunks(3));
+//! assert_eq!(
+//!     sosos,
+//!     [[[1, 2], [3, 4], [5, 6]], [[7, 8], [9, 10], [11, 12]]]
+//! );
+//! assert_eq!(level0.capacity(), 6);
+//! assert_eq!(level1.capacity(), 2);
+//! ```
+//!
+//! For each level of nesting, a separate [`Slice`] is needed.
+//! The above example uses a `Slice<[T]>` for the innermost level and
+//! a `Slice<[&[T]]>` for the outer level.
+//! The resulting slice has the type `&[&[&[T]]]`.
 
 #![warn(rust_2018_idioms)]
 #![warn(single_use_lifetimes)]
