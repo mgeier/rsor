@@ -84,13 +84,13 @@
 //! use rsor::Slice;
 //! # fn print_slice(slice: &[&str]) { for s in slice { print!("<{}>", s); } println!(); }
 //!
-//! let mut myslice = Slice::<str>::with_capacity(2);
+//! let mut reusable_slice = Slice::<str>::with_capacity(2);
 //!
 //! {
 //!     let one = String::from("one");
 //!     let two = String::from("two");
 //!
-//!     let strings = myslice.fill(|mut v| {
+//!     let strings = reusable_slice.fill(|mut v| {
 //!         v.push(&one);
 //!         v.push(&two);
 //!         v
@@ -100,12 +100,12 @@
 //!
 //! let three = String::from("three");
 //!
-//! let strings = myslice.fill(|mut v| {
+//! let strings = reusable_slice.fill(|mut v| {
 //!     v.push(&three);
 //!     v
 //! });
 //! print_slice(strings);
-//! assert_eq!(myslice.capacity(), 2);
+//! assert_eq!(reusable_slice.capacity(), 2);
 //! ```
 //!
 //! This example compiles successfully and produces the expected output:
@@ -246,11 +246,11 @@ impl<T: 'static + ?Sized> Slice<T> {
     /// ```compile_fail
     /// use rsor::Slice;
     ///
-    /// let mut myslice = Slice::<str>::new();
+    /// let mut reusable_slice = Slice::<str>::new();
     /// let strings = {
     ///     let inner_scope = String::from("inner scope is too short-lived");
     ///     let static_str = "static &str is OK";
-    ///     myslice.fill(|mut v| {
+    ///     reusable_slice.fill(|mut v| {
     ///         v.push(&inner_scope);
     ///         v.push(static_str);
     ///         v
@@ -266,8 +266,8 @@ impl<T: 'static + ?Sized> Slice<T> {
     /// 4  | let strings = {
     ///    |     ------- borrow later stored here
     /// ...
-    /// 7  |     myslice.fill(|mut v| {
-    ///    |                  ------- value captured here
+    /// 7  |     reusable_slice.fill(|mut v| {
+    ///    |                         ------- value captured here
     /// 8  |         v.push(&inner_scope);
     ///    |                 ^^^^^^^^^^^ borrowed value does not live long enough
     /// ...
@@ -281,11 +281,11 @@ impl<T: 'static + ?Sized> Slice<T> {
     ///
     /// ```
     /// # use rsor::Slice;
-    /// let mut myslice = Slice::<str>::new();
+    /// let mut reusable_slice = Slice::<str>::new();
     /// let same_scope = String::from("same scope is OK");
     /// let strings = {
     ///     let static_str = "static &str is OK";
-    ///     myslice.fill(|mut v| {
+    ///     reusable_slice.fill(|mut v| {
     ///         v.push(&same_scope);
     ///         v.push(static_str);
     ///         v
@@ -302,8 +302,8 @@ impl<T: 'static + ?Sized> Slice<T> {
     ///
     /// let data = 'a';
     /// let outer_reference = {
-    ///     let mut myslice = Slice::new();
-    ///     let chars = myslice.fill(|mut v| {
+    ///     let mut reusable_slice = Slice::new();
+    ///     let chars = reusable_slice.fill(|mut v| {
     ///         v.push(&data);
     ///         v
     ///     });
@@ -316,7 +316,7 @@ impl<T: 'static + ?Sized> Slice<T> {
     /// where `'a` is the lifetime of the inner scope, while the lifetime `'b`
     /// is valid until the end of the example.
     /// This is why `outer_reference` (with lifetime `'b`) can still be accessed
-    /// when `myslice` and `chars` (with lifetime `'a`) have already gone out of scope.
+    /// when `reusable_slice` and `chars` (with lifetime `'a`) have already gone out of scope.
     pub fn fill<'a, 'b, F>(&'a mut self, f: F) -> &'a [&'b T]
     where
         F: FnOnce(Vec<&'b T>) -> Vec<&'b T>,
@@ -493,10 +493,10 @@ impl<T: 'static + ?Sized> Drop for Slice<T> {
 /// a `Slice<Rc<T>>` can be sent between threads:
 ///
 /// ```
-/// let myslice = rsor::Slice::<std::rc::Rc<i32>>::new();
+/// let reusable_slice = rsor::Slice::<std::rc::Rc<i32>>::new();
 ///
 /// std::thread::spawn(move || {
-///     assert_eq!(myslice.capacity(), 0);
+///     assert_eq!(reusable_slice.capacity(), 0);
 /// }).join().unwrap();
 /// ```
 unsafe impl<T: 'static + ?Sized> Send for Slice<T> {}
@@ -507,9 +507,9 @@ mod test {
 
     #[test]
     fn local_variable() {
-        let mut myslice = Slice::new();
+        let mut reusable_slice = Slice::new();
         let mut number = 24;
-        let slice = myslice.fill_mut(|mut v| {
+        let slice = reusable_slice.fill_mut(|mut v| {
             v.push(&mut number);
             v
         });
@@ -519,11 +519,11 @@ mod test {
 
     #[test]
     fn different_lifetimes() {
-        let mut myslice = Slice::new();
+        let mut reusable_slice = Slice::new();
 
         {
             let mut number = 7;
-            let slice = myslice.fill_mut(|mut v| {
+            let slice = reusable_slice.fill_mut(|mut v| {
                 v.push(&mut number);
                 v
             });
@@ -533,7 +533,7 @@ mod test {
 
         {
             let mut number = Box::new(5);
-            let slice = myslice.fill_mut(|mut v| {
+            let slice = reusable_slice.fill_mut(|mut v| {
                 v.push(&mut *number);
                 v
             });
@@ -543,7 +543,7 @@ mod test {
 
         {
             let number = 4;
-            let slice = myslice.fill(|mut v| {
+            let slice = reusable_slice.fill(|mut v| {
                 v.push(&number);
                 v
             });
@@ -553,9 +553,9 @@ mod test {
 
     #[test]
     fn fill() {
-        let mut myslice = Slice::new();
+        let mut reusable_slice = Slice::new();
         let data = vec![1, 2, 3, 4, 5, 6];
-        let sos = myslice.fill(|mut v| {
+        let sos = reusable_slice.fill(|mut v| {
             v.push(&data[0..2]);
             v.push(&data[2..4]);
             v.push(&data[4..6]);
@@ -566,9 +566,9 @@ mod test {
 
     #[test]
     fn fill_mut() {
-        let mut myslice = Slice::new();
+        let mut reusable_slice = Slice::new();
         let mut data = vec![1, 2, 3, 4, 5, 6];
-        let sos = myslice.fill_mut(|mut v| {
+        let sos = reusable_slice.fill_mut(|mut v| {
             let (first, second) = data.split_at_mut(2);
             v.push(first);
             let (first, second) = second.split_at_mut(2);
@@ -581,14 +581,14 @@ mod test {
 
     #[test]
     fn from_nested_ptr() {
-        let mut myslice = Slice::with_capacity(3);
+        let mut reusable_slice = Slice::with_capacity(3);
         let v = vec![1, 2, 3, 4, 5, 6];
 
         // Assuming we have a slice of pointers with a known length:
         let ptrs = [v[0..2].as_ptr(), v[2..4].as_ptr(), v[4..6].as_ptr()];
         let length = 2;
 
-        let sos = myslice.from_iter(
+        let sos = reusable_slice.from_iter(
             ptrs.iter()
                 .map(|&ptr| unsafe { std::slice::from_raw_parts(ptr, length) }),
         );
@@ -597,7 +597,7 @@ mod test {
 
     #[test]
     fn from_nested_ptr_mut() {
-        let mut myslice = Slice::new();
+        let mut reusable_slice = Slice::new();
         let mut v = vec![1, 2, 3, 4, 5, 6];
 
         // Assuming we have a slice of pointers with a known length:
@@ -608,7 +608,7 @@ mod test {
         ];
         let length = 2;
 
-        let sos = myslice.from_iter_mut(
+        let sos = reusable_slice.from_iter_mut(
             ptrs.iter()
                 .map(|&ptr| unsafe { std::slice::from_raw_parts_mut(ptr, length) }),
         );
