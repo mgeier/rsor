@@ -189,6 +189,7 @@
 #![warn(single_use_lifetimes)]
 #![deny(missing_docs)]
 
+use std::marker::PhantomData;
 use std::mem;
 
 /// Reusable slice of references.
@@ -201,17 +202,15 @@ use std::mem;
 /// (using references with a possibly different lifetime).
 ///
 /// *See also the [crate-level documentation](crate).*
-pub struct Slice<T: 'static + ?Sized> {
+pub struct Slice<T: ?Sized> {
     /// Pointer and capacity of a `Vec`.
     ///
-    /// The `'static` lifetime is just a placeholder,
-    /// more appropriate lifetimes are applied later.
-    ///
     /// NB: `length` is ignored, see `Drop` implementation.
-    vec_data: Option<(*mut &'static T, usize)>,
+    vec_data: Option<(*mut (), usize)>,
+    _marker: PhantomData<*mut T>,
 }
 
-impl<T: 'static + ?Sized> Slice<T> {
+impl<T: ?Sized> Slice<T> {
     /// Creates a new reusable slice with capacity `0`.
     pub fn new() -> Slice<T> {
         Slice::with_capacity(0)
@@ -219,10 +218,10 @@ impl<T: 'static + ?Sized> Slice<T> {
 
     /// Creates a new reusable slice with the given capacity.
     pub fn with_capacity(capacity: usize) -> Slice<T> {
-        let mut v = mem::ManuallyDrop::new(Vec::<&T>::with_capacity(capacity));
-        let ptr: *mut &T = v.as_mut_ptr();
+        let mut v = mem::ManuallyDrop::new(Vec::<&mut T>::with_capacity(capacity));
         Slice {
-            vec_data: Some((ptr, v.capacity())),
+            vec_data: Some((v.as_mut_ptr() as *mut (), v.capacity())),
+            _marker: PhantomData,
         }
     }
 
@@ -332,7 +331,7 @@ impl<T: 'static + ?Sized> Slice<T> {
         let v = mem::ManuallyDrop::new(v);
         let (ptr, length, capacity) = (v.as_ptr(), v.len(), v.capacity());
         let result = unsafe { std::slice::from_raw_parts(ptr, length) };
-        self.vec_data = Some((ptr as *mut &T, capacity));
+        self.vec_data = Some((ptr as *mut (), capacity));
         result
     }
 
@@ -349,7 +348,7 @@ impl<T: 'static + ?Sized> Slice<T> {
         let mut v = mem::ManuallyDrop::new(v);
         let (ptr, length, capacity) = (v.as_mut_ptr(), v.len(), v.capacity());
         let result = unsafe { std::slice::from_raw_parts_mut(ptr, length) };
-        self.vec_data = Some((ptr as *mut &T, capacity));
+        self.vec_data = Some((ptr as *mut (), capacity));
         result
     }
 
@@ -473,18 +472,18 @@ impl<T: 'static + ?Sized> Slice<T> {
     }
 }
 
-impl<T: 'static + ?Sized> Default for Slice<T> {
+impl<T: ?Sized> Default for Slice<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: 'static + ?Sized> Drop for Slice<T> {
+impl<T: ?Sized> Drop for Slice<T> {
     fn drop(&mut self) {
         if let Some((ptr, capacity)) = self.vec_data {
             unsafe {
                 // Length is assumed to be zero, there are no destructors to be run for references.
-                Vec::from_raw_parts(ptr, 0, capacity);
+                Vec::from_raw_parts(ptr as *mut &mut T, 0, capacity);
             }
         }
     }
@@ -508,7 +507,7 @@ impl<T: 'static + ?Sized> Drop for Slice<T> {
 ///     assert_eq!(reusable_slice.capacity(), 0);
 /// }).join().unwrap();
 /// ```
-unsafe impl<T: 'static + ?Sized> Send for Slice<T> {}
+unsafe impl<T: ?Sized> Send for Slice<T> {}
 
 #[cfg(test)]
 mod test {
