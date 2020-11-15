@@ -205,9 +205,35 @@ use std::mem;
 pub struct Slice<T: ?Sized> {
     /// Pointer and capacity of a `Vec`.
     ///
+    /// We want to store `&T` and/or `&mut T` elements with different lifetimes,
+    /// but dynamically changing lifetimes are not supported by Rust
+    /// (because they cannot be verified at compile time).
+    /// To avoid exposing any lifetime at all, we hide the actual reference type
+    /// from the compiler by storing a pointer to some dummy type.
+    ///
     /// NB: `length` is ignored, see `Drop` implementation.
     vec_data: Option<(*mut (), usize)>,
-    _marker: PhantomData<*mut T>,
+
+    /// Zero-sized field using `T` to avoid "unused parameter" error.
+    ///
+    /// The `Slice` doesn't own instances of `T`, only references.
+    /// But since we don't want to expose a lifetime,
+    /// we use a pointer here instead of a reference (`*const` for variance).
+    _marker: PhantomData<*const T>,
+}
+
+impl<T: ?Sized> Drop for Slice<T> {
+    fn drop(&mut self) {
+        if let Some((ptr, capacity)) = self.vec_data {
+            // Correct type has to be restored (might be a fat pointer)
+            // to make sure the right amount of storage is deallocated.
+            let ptr = ptr as *mut &mut T;
+            unsafe {
+                // Length is assumed to be zero, there are no destructors to be run for references.
+                Vec::from_raw_parts(ptr, 0, capacity);
+            }
+        }
+    }
 }
 
 impl<T: ?Sized> Slice<T> {
@@ -475,17 +501,6 @@ impl<T: ?Sized> Slice<T> {
 impl<T: ?Sized> Default for Slice<T> {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl<T: ?Sized> Drop for Slice<T> {
-    fn drop(&mut self) {
-        if let Some((ptr, capacity)) = self.vec_data {
-            unsafe {
-                // Length is assumed to be zero, there are no destructors to be run for references.
-                Vec::from_raw_parts(ptr as *mut &mut T, 0, capacity);
-            }
-        }
     }
 }
 
