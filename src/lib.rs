@@ -152,6 +152,11 @@
 //! If a pointer/length pair is given, it can be turned into a slice with
 //! [`std::slice::from_raw_parts_mut()`] or [`std::slice::from_raw_parts()`].
 //!
+//! If a "list of lists" (e.g. something like a `Vec<Vec<T>>`) is given,
+//! it can be turned into a slice of slices with
+//! [`Slice::from_refs()`] (returning `&[&[T]]`) or
+//! [`Slice::from_muts()`] (returning `&mut [&mut [T]]`).
+//!
 //! In C APIs it is common to have a "pointer to pointers",
 //! where one pointer points to a contiguous piece of memory
 //! containing further pointers, each pointing to yet another piece of memory.
@@ -349,6 +354,8 @@ impl<T: 'static + ?Sized> Slice<T> {
     }
 
     /// Returns a slice of references that has been filled by draining an iterator.
+    ///
+    /// *See the [crate-level documentation](crate#common-use-cases) for examples.*
     pub fn from_iter<'a, 'b, I>(&'a mut self, iter: I) -> &'a [&'b T]
     where
         I: IntoIterator<Item = &'b T>,
@@ -360,6 +367,8 @@ impl<T: 'static + ?Sized> Slice<T> {
     }
 
     /// Returns a slice of mutable references that has been filled by draining an iterator.
+    ///
+    /// *See the [crate-level documentation](crate#common-use-cases) for examples.*
     pub fn from_iter_mut<'a, 'b, I>(&'a mut self, iter: I) -> &'a mut [&'b mut T]
     where
         I: IntoIterator<Item = &'b mut T>,
@@ -397,7 +406,7 @@ impl<T: 'static + ?Sized> Slice<T> {
     /// ```
     ///
     /// A list of [`Vec`]s (or boxed slices etc.) can be turned into
-    /// a slice of slices (`&[&[T]]`) by using a `Slice<[T]>`:
+    /// a *slice of slices* (`&[&[T]]`) by using a `Slice<[T]>`:
     ///
     /// ```
     /// # use rsor::Slice;
