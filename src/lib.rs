@@ -384,13 +384,15 @@ impl<T: ?Sized> Slice<T> {
         F: FnOnce(Vec<&'b T>) -> Vec<&'b T>,
     {
         let (ptr, capacity) = self.vec_data.take().unwrap();
-        let mut v = unsafe { Vec::from_raw_parts(ptr.as_ptr() as *mut &T, 0, capacity) };
-        v = f(v); // NB: Re-allocation is possible, this might even return a different Vec!
-        let v = mem::ManuallyDrop::new(v);
-        let (ptr, length, capacity) = (v.as_ptr(), v.len(), v.capacity());
+        let ptr = ptr.cast::<&T>().as_ptr();
+        let v = unsafe { Vec::from_raw_parts(ptr, 0, capacity) };
+        let v = f(v); // NB: Re-allocation is possible, this might even return a different Vec!
+        let mut v = mem::ManuallyDrop::new(v);
+        let (ptr, length, capacity) = (v.as_mut_ptr(), v.len(), v.capacity());
         let result = unsafe { std::slice::from_raw_parts(ptr, length) };
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
-        let ptr = unsafe { NonNull::new_unchecked(ptr as *mut ()) };
+        let ptr = unsafe { NonNull::new_unchecked(ptr) };
+        let ptr = ptr.cast::<()>();
         self.vec_data = Some((ptr, capacity));
         result
     }
@@ -403,13 +405,15 @@ impl<T: ?Sized> Slice<T> {
         F: FnOnce(Vec<&'b mut T>) -> Vec<&'b mut T>,
     {
         let (ptr, capacity) = self.vec_data.take().unwrap();
-        let mut v = unsafe { Vec::from_raw_parts(ptr.as_ptr() as *mut &mut T, 0, capacity) };
-        v = f(v); // NB: Re-allocation is possible, this might even return a different Vec!
+        let ptr = ptr.cast::<&mut T>().as_ptr();
+        let v = unsafe { Vec::from_raw_parts(ptr, 0, capacity) };
+        let v = f(v); // NB: Re-allocation is possible, this might even return a different Vec!
         let mut v = mem::ManuallyDrop::new(v);
         let (ptr, length, capacity) = (v.as_mut_ptr(), v.len(), v.capacity());
         let result = unsafe { std::slice::from_raw_parts_mut(ptr, length) };
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
-        let ptr = unsafe { NonNull::new_unchecked(ptr as *mut ()) };
+        let ptr = unsafe { NonNull::new_unchecked(ptr) };
+        let ptr = ptr.cast::<()>();
         self.vec_data = Some((ptr, capacity));
         result
     }
