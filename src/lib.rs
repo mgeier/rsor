@@ -257,7 +257,7 @@ impl<T: ?Sized> Drop for Slice<T> {
         if let Some((ptr, capacity)) = self.vec_data {
             // The correct type has to be restored (might be a fat pointer)
             // to make sure the right amount of storage is deallocated.
-            let ptr = ptr.as_ptr() as *mut &mut T;
+            let ptr = ptr.cast::<&mut T>().as_ptr();
             unsafe {
                 // Length is assumed to be zero, there are no destructors to be run for references.
                 Vec::from_raw_parts(ptr, 0, capacity);
@@ -276,7 +276,8 @@ impl<T: ?Sized> Slice<T> {
     pub fn with_capacity(capacity: usize) -> Slice<T> {
         let mut v = mem::ManuallyDrop::new(Vec::<&mut T>::with_capacity(capacity));
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
-        let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr() as *mut ()) };
+        let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
+        let ptr = ptr.cast::<()>();
         Slice {
             vec_data: Some((ptr, v.capacity())),
             _marker: PhantomData,
