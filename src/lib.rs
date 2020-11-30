@@ -388,13 +388,11 @@ impl<T: ?Sized> Slice<T> {
         let v = unsafe { Vec::from_raw_parts(ptr, 0, capacity) };
         let v = f(v); // NB: Re-allocation is possible, this might even return a different Vec!
         let mut v = mem::ManuallyDrop::new(v);
-        let (ptr, length, capacity) = (v.as_mut_ptr(), v.len(), v.capacity());
-        let result = unsafe { std::slice::from_raw_parts(ptr, length) };
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
-        let ptr = unsafe { NonNull::new_unchecked(ptr) };
+        let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
         let ptr = ptr.cast::<()>();
-        self.vec_data = Some((ptr, capacity));
-        result
+        self.vec_data = Some((ptr, v.capacity()));
+        unsafe { std::slice::from_raw_parts(v.as_ptr(), v.len()) }
     }
 
     /// Returns a slice of mutable references that has been filled by the given function.
@@ -409,13 +407,11 @@ impl<T: ?Sized> Slice<T> {
         let v = unsafe { Vec::from_raw_parts(ptr, 0, capacity) };
         let v = f(v); // NB: Re-allocation is possible, this might even return a different Vec!
         let mut v = mem::ManuallyDrop::new(v);
-        let (ptr, length, capacity) = (v.as_mut_ptr(), v.len(), v.capacity());
-        let result = unsafe { std::slice::from_raw_parts_mut(ptr, length) };
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
-        let ptr = unsafe { NonNull::new_unchecked(ptr) };
+        let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
         let ptr = ptr.cast::<()>();
-        self.vec_data = Some((ptr, capacity));
-        result
+        self.vec_data = Some((ptr, v.capacity()));
+        unsafe { std::slice::from_raw_parts_mut(v.as_mut_ptr(), v.len()) }
     }
 
     /// Returns a slice of references that has been filled by draining an iterator.
