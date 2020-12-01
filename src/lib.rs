@@ -216,7 +216,6 @@
 #![warn(single_use_lifetimes)]
 #![deny(missing_docs)]
 
-use std::marker::PhantomData;
 use std::mem;
 use std::ptr::NonNull;
 
@@ -237,30 +236,20 @@ pub struct Slice<T: ?Sized> {
     /// but dynamically changing lifetimes are not supported by Rust
     /// (because they cannot be verified at compile time).
     /// To avoid exposing any lifetime at all, we hide the actual reference type
-    /// from the compiler by storing a pointer to some dummy type.
+    /// from the compiler by storing a pointer to a pointer instead of a pointer to a reference.
     ///
-    /// The pointer is `NonNull` instead of `*mut` to enable null pointer optimization.
+    /// We use `NonNull` to enable null pointer optimization.
     ///
     /// NB: `length` is ignored, see `Drop` implementation.
-    vec_data: Option<(NonNull<()>, usize)>,
-
-    /// Zero-sized field using `T` to avoid "unused parameter" error.
-    ///
-    /// The `Slice` doesn't own instances of `T`, only references.
-    /// But since we don't want to expose a lifetime,
-    /// we use a pointer here instead of a reference (`*const` for variance).
-    _marker: PhantomData<*const T>,
+    vec_data: Option<(NonNull<*const T>, usize)>,
 }
 
 impl<T: ?Sized> Drop for Slice<T> {
     fn drop(&mut self) {
         if let Some((ptr, capacity)) = self.vec_data {
-            // The correct type has to be restored (might be a fat pointer)
-            // to make sure the right amount of storage is deallocated.
-            let ptr = ptr.cast::<&mut T>().as_ptr();
             unsafe {
                 // Length is assumed to be zero, there are no destructors to be run for references.
-                Vec::from_raw_parts(ptr, 0, capacity);
+                Vec::from_raw_parts(ptr.as_ptr(), 0, capacity);
             }
         }
     }
@@ -274,13 +263,11 @@ impl<T: ?Sized> Slice<T> {
 
     /// Creates a new reusable slice with the given capacity.
     pub fn with_capacity(capacity: usize) -> Slice<T> {
-        let mut v = mem::ManuallyDrop::new(Vec::<&mut T>::with_capacity(capacity));
+        let mut v = mem::ManuallyDrop::new(Vec::with_capacity(capacity));
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
         let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
-        let ptr = ptr.cast::<()>();
         Slice {
             vec_data: Some((ptr, v.capacity())),
-            _marker: PhantomData,
         }
     }
 
@@ -391,8 +378,7 @@ impl<T: ?Sized> Slice<T> {
         let mut v = mem::ManuallyDrop::new(v);
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
         let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
-        let ptr = ptr.cast::<()>();
-        self.vec_data = Some((ptr, v.capacity()));
+        self.vec_data = Some((ptr.cast(), v.capacity()));
         unsafe { std::slice::from_raw_parts(v.as_ptr(), v.len()) }
     }
 
@@ -410,8 +396,7 @@ impl<T: ?Sized> Slice<T> {
         let mut v = mem::ManuallyDrop::new(v);
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
         let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
-        let ptr = ptr.cast::<()>();
-        self.vec_data = Some((ptr, v.capacity()));
+        self.vec_data = Some((ptr.cast(), v.capacity()));
         unsafe { std::slice::from_raw_parts_mut(v.as_mut_ptr(), v.len()) }
     }
 
