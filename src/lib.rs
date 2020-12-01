@@ -561,6 +561,11 @@ impl<T: ?Sized> Default for Slice<T> {
 /// ```
 unsafe impl<T: ?Sized> Send for Slice<T> {}
 
+/// A `&Slice` can be shared between threads.
+///
+/// However, a reference can only be taken when the `Slice` is not in use.
+unsafe impl<T: ?Sized> Sync for Slice<T> {}
+
 #[cfg(test)]
 mod test {
     use super::*;
