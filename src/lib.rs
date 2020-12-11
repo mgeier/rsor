@@ -216,7 +216,7 @@
 #![warn(single_use_lifetimes)]
 #![deny(missing_docs)]
 
-use std::mem;
+use std::mem::ManuallyDrop;
 use std::ptr::NonNull;
 
 /// Reusable slice of references.
@@ -263,7 +263,7 @@ impl<T: ?Sized> Slice<T> {
 
     /// Creates a new reusable slice with the given capacity.
     pub fn with_capacity(capacity: usize) -> Slice<T> {
-        let mut v = mem::ManuallyDrop::new(Vec::with_capacity(capacity));
+        let mut v = ManuallyDrop::new(Vec::with_capacity(capacity));
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
         let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
         Slice {
@@ -375,7 +375,7 @@ impl<T: ?Sized> Slice<T> {
         let ptr = ptr.cast::<&T>().as_ptr();
         let v = unsafe { Vec::from_raw_parts(ptr, 0, capacity) };
         let v = f(v); // NB: Re-allocation is possible, this might even return a different Vec!
-        let mut v = mem::ManuallyDrop::new(v);
+        let mut v = ManuallyDrop::new(v);
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
         let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
         self.vec_data = Some((ptr.cast(), v.capacity()));
@@ -393,7 +393,7 @@ impl<T: ?Sized> Slice<T> {
         let ptr = ptr.cast::<&mut T>().as_ptr();
         let v = unsafe { Vec::from_raw_parts(ptr, 0, capacity) };
         let v = f(v); // NB: Re-allocation is possible, this might even return a different Vec!
-        let mut v = mem::ManuallyDrop::new(v);
+        let mut v = ManuallyDrop::new(v);
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
         let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
         self.vec_data = Some((ptr.cast(), v.capacity()));
@@ -672,6 +672,7 @@ mod test {
     /// Makes sure we use null pointer optimization.
     #[test]
     fn struct_size() {
-        assert_eq!(mem::size_of::<Slice<f32>>(), mem::size_of::<&[f32]>());
+        use std::mem::size_of;
+        assert_eq!(size_of::<Slice<f32>>(), size_of::<&[f32]>());
     }
 }
