@@ -514,6 +514,23 @@ impl<T: ?Sized> Slice<T> {
     }
 
     /// Returns the number of references that can be used without reallocating.
+    ///
+    /// Additional memory is allocated automatically when needed.
+    /// To explicitly reserve a certain amount of memory,
+    /// [`.fill()`](Slice::fill) (or [`.fill_mut()`](Slice::fill_mut)) can be (ab)used,
+    /// since it gives access to the underlying [`Vec`]:
+    ///
+    /// ```
+    /// use rsor::Slice;
+    ///
+    /// let mut reusable_slice = Slice::<[f32]>::with_capacity(3);
+    /// assert_eq!(reusable_slice.capacity(), 3);
+    /// reusable_slice.fill(|mut v| {
+    ///     v.reserve_exact(7);
+    ///     v
+    /// });
+    /// assert_eq!(reusable_slice.capacity(), 7);
+    /// ```
     pub fn capacity(&self) -> usize {
         // NB: vec_data can only be None during `fill[_mut]()`, which has exclusive access.
         self.vec_data.unwrap().1
