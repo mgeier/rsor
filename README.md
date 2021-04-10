@@ -4,6 +4,9 @@ Reusable Slice of References
 * Crate: https://crates.io/crates/rsor
 * Documentation: https://docs.rs/rsor
 
+This crate can be used without the standard library (`#![no_std]`),
+but the [alloc](https://doc.rust-lang.org/alloc/) crate is needed nevertheless.
+
 
 Usage
 -----
