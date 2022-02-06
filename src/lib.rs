@@ -251,6 +251,10 @@ impl<T: ?Sized> Drop for Slice<T> {
                 // Length is assumed to be zero, there are no destructors to be run for references.
                 let _ = Vec::from_raw_parts(ptr.as_ptr(), 0, capacity);
             }
+        } else {
+            // This branch is only taken if there is a panic in the function provided to
+            // `fill()` or `fill_mut()`.
+            // In this case, the memory is automatically freed during unwinding.
         }
     }
 }
@@ -691,5 +695,29 @@ mod test {
     fn struct_size() {
         use std::mem::size_of;
         assert_eq!(size_of::<Slice<f32>>(), size_of::<&[f32]>());
+    }
+
+    #[test]
+    #[should_panic(expected = "panic in fill")]
+    fn panic_in_fill() {
+        let mut reusable_slice = Slice::<i32>::new();
+        reusable_slice.fill(|mut v| {
+            v.reserve_exact(10);
+            panic!("panic in fill");
+            // The reserved memory is freed during unwinding,
+            // before `reusable_slice` is dropped.
+        });
+    }
+
+    #[test]
+    #[should_panic(expected = "panic in fill_mut")]
+    fn panic_in_fill_mut() {
+        let mut reusable_slice = Slice::<i32>::new();
+        reusable_slice.fill_mut(|mut v| {
+            v.reserve_exact(10);
+            panic!("panic in fill_mut");
+            // The reserved memory is freed during unwinding,
+            // before `reusable_slice` is dropped.
+        });
     }
 }
