@@ -249,7 +249,7 @@ impl<T: ?Sized> Drop for Slice<T> {
         if let Some((ptr, capacity)) = self.vec_data {
             unsafe {
                 // Length is assumed to be zero, there are no destructors to be run for references.
-                Vec::from_raw_parts(ptr.as_ptr(), 0, capacity);
+                let _ = Vec::from_raw_parts(ptr.as_ptr(), 0, capacity);
             }
         }
     }
