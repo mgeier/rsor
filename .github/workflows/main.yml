@@ -9,15 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone Git repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: stable
-          override: true
       - name: Run tests
         run: |
           cargo test --workspace --all-features
@@ -26,25 +24,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone Git repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: stable
           components: rustfmt, clippy
-          override: true
       - name: rustfmt
         run: |
           cargo fmt --all --check
       - name: clippy
         run: |
           cargo clippy --all-targets --all-features -- -D warnings
-      - name: docs
+      - name: Build docs
         run: |
-          cargo doc --verbose --workspace --all-features
+          cargo rustdoc --all-features -- -D warnings
+      - name: Upload docs
+        uses: actions/upload-artifact@v3
+        with:
+          name: docs
+          path: target/doc/*
       - name: packaging
         run: |
           cargo package --verbose
@@ -52,19 +53,17 @@ jobs:
   msrv:
     strategy:
       matrix:
-        rust-version: [1.31.0]
+        rust-version: ["1.31.0"]
     runs-on: ubuntu-latest
     steps:
       - name: Clone Git repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
       - name: Install Rust version ${{ matrix.rust-version }}
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust-version }}
-          override: true
       - name: Check whether it compiles
         run: |
           cargo check --all-features --verbose
