@@ -67,3 +67,19 @@ jobs:
       - name: Check whether it compiles
         run: |
           cargo check --all-features --verbose
+
+  miri:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone Git repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: miri
+      - name: Run Miri
+        run: |
+          cargo miri test
