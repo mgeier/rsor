@@ -672,12 +672,8 @@ mod test {
         let mut v = vec![1, 2, 3, 4, 5, 6];
 
         // Assuming we have a slice of pointers with a known length:
-        let ptrs = [
-            v[0..2].as_mut_ptr(),
-            v[2..4].as_mut_ptr(),
-            v[4..6].as_mut_ptr(),
-        ];
         let length = 2;
+        let ptrs: Vec<*mut _> = v.chunks_exact_mut(length).map(|s| s.as_mut_ptr()).collect();
 
         let sos = reusable_slice.from_iter_mut(
             ptrs.iter()
