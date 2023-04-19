@@ -572,6 +572,12 @@ unsafe impl<T: ?Sized> Send for Slice<T> {}
 /// However, a reference can only be taken when the `Slice` is not in use.
 unsafe impl<T: ?Sized> Sync for Slice<T> {}
 
+impl<T> Clone for Slice<T> {
+    fn clone(&self) -> Self {
+        Slice::with_capacity(self.capacity())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
