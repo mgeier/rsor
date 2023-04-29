@@ -212,12 +212,16 @@
 //! a `Slice<[&[T]]>` for the outer level.
 //! The resulting slice has the type `&[&[&[T]]]`.
 
+#![no_std]
 #![warn(rust_2018_idioms)]
 #![warn(single_use_lifetimes)]
 #![deny(missing_docs)]
 
-use std::mem::ManuallyDrop;
-use std::ptr::NonNull;
+extern crate alloc;
+
+use alloc::vec::Vec;
+use core::mem::ManuallyDrop;
+use core::ptr::NonNull;
 
 /// Reusable slice of references.
 ///
@@ -383,7 +387,7 @@ impl<T: ?Sized> Slice<T> {
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
         let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
         self.vec_data = Some((ptr.cast(), v.capacity()));
-        unsafe { std::slice::from_raw_parts(v.as_ptr(), v.len()) }
+        unsafe { core::slice::from_raw_parts(v.as_ptr(), v.len()) }
     }
 
     /// Returns a slice of mutable references that has been filled by the given function.
@@ -401,7 +405,7 @@ impl<T: ?Sized> Slice<T> {
         // Safety: Pointer in `Vec` is guaranteed to be non-null.
         let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
         self.vec_data = Some((ptr.cast(), v.capacity()));
-        unsafe { std::slice::from_raw_parts_mut(v.as_mut_ptr(), v.len()) }
+        unsafe { core::slice::from_raw_parts_mut(v.as_mut_ptr(), v.len()) }
     }
 
     /// Returns a slice of references that has been filled by draining an iterator.
@@ -603,7 +607,7 @@ mod test {
         }
 
         {
-            let mut number = Box::new(5);
+            let mut number = alloc::boxed::Box::new(5);
             let slice = reusable_slice.fill_mut(|mut v| {
                 v.push(&mut *number);
                 v
@@ -625,7 +629,7 @@ mod test {
     #[test]
     fn fill() {
         let mut reusable_slice = Slice::new();
-        let data = vec![1, 2, 3, 4, 5, 6];
+        let data = alloc::vec![1, 2, 3, 4, 5, 6];
         let sos = reusable_slice.fill(|mut v| {
             v.push(&data[0..2]);
             v.push(&data[2..4]);
@@ -638,7 +642,7 @@ mod test {
     #[test]
     fn fill_mut() {
         let mut reusable_slice = Slice::new();
-        let mut data = vec![1, 2, 3, 4, 5, 6];
+        let mut data = alloc::vec![1, 2, 3, 4, 5, 6];
         let sos = reusable_slice.fill_mut(|mut v| {
             let (first, second) = data.split_at_mut(2);
             v.push(first);
@@ -653,7 +657,7 @@ mod test {
     #[test]
     fn from_nested_ptr() {
         let mut reusable_slice = Slice::with_capacity(3);
-        let v = vec![1, 2, 3, 4, 5, 6];
+        let v = alloc::vec![1, 2, 3, 4, 5, 6];
 
         // Assuming we have a slice of pointers with a known length:
         let ptrs = [v[0..2].as_ptr(), v[2..4].as_ptr(), v[4..6].as_ptr()];
@@ -661,7 +665,7 @@ mod test {
 
         let sos = reusable_slice.from_iter(
             ptrs.iter()
-                .map(|&ptr| unsafe { std::slice::from_raw_parts(ptr, length) }),
+                .map(|&ptr| unsafe { core::slice::from_raw_parts(ptr, length) }),
         );
         assert_eq!(sos, [[1, 2], [3, 4], [5, 6]]);
     }
@@ -669,7 +673,7 @@ mod test {
     #[test]
     fn from_nested_ptr_mut() {
         let mut reusable_slice = Slice::new();
-        let mut v = vec![1, 2, 3, 4, 5, 6];
+        let mut v = alloc::vec![1, 2, 3, 4, 5, 6];
 
         // Assuming we have a slice of pointers with a known length:
         let length = 2;
@@ -677,7 +681,7 @@ mod test {
 
         let sos = reusable_slice.from_iter_mut(
             ptrs.iter()
-                .map(|&ptr| unsafe { std::slice::from_raw_parts_mut(ptr, length) }),
+                .map(|&ptr| unsafe { core::slice::from_raw_parts_mut(ptr, length) }),
         );
         assert_eq!(sos, [[1, 2], [3, 4], [5, 6]]);
         sos[1][0] = 30;
@@ -689,7 +693,7 @@ mod test {
     /// Makes sure we use null pointer optimization.
     #[test]
     fn struct_size() {
-        use std::mem::size_of;
+        use core::mem::size_of;
         assert_eq!(size_of::<Slice<f32>>(), size_of::<&[f32]>());
     }
 
