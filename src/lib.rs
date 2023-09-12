@@ -412,7 +412,7 @@ impl<T: ?Sized> Slice<T> {
         I: IntoIterator<Item = &'b T>,
     {
         self.fill(|mut v| {
-            v.extend(iter.into_iter());
+            v.extend(iter);
             v
         })
     }
@@ -425,7 +425,7 @@ impl<T: ?Sized> Slice<T> {
         I: IntoIterator<Item = &'b mut T>,
     {
         self.fill_mut(|mut v| {
-            v.extend(iter.into_iter());
+            v.extend(iter);
             v
         })
     }
@@ -631,7 +631,7 @@ mod test {
     #[test]
     fn fill() {
         let mut reusable_slice = Slice::new();
-        let data = vec![1, 2, 3, 4, 5, 6];
+        let data = [1, 2, 3, 4, 5, 6];
         let sos = reusable_slice.fill(|mut v| {
             v.push(&data[0..2]);
             v.push(&data[2..4]);
@@ -644,7 +644,7 @@ mod test {
     #[test]
     fn fill_mut() {
         let mut reusable_slice = Slice::new();
-        let mut data = vec![1, 2, 3, 4, 5, 6];
+        let mut data = [1, 2, 3, 4, 5, 6];
         let sos = reusable_slice.fill_mut(|mut v| {
             let (first, second) = data.split_at_mut(2);
             v.push(first);
@@ -659,10 +659,10 @@ mod test {
     #[test]
     fn from_nested_ptr() {
         let mut reusable_slice = Slice::with_capacity(3);
-        let v = vec![1, 2, 3, 4, 5, 6];
+        let a = [1, 2, 3, 4, 5, 6];
 
         // Assuming we have a slice of pointers with a known length:
-        let ptrs = [v[0..2].as_ptr(), v[2..4].as_ptr(), v[4..6].as_ptr()];
+        let ptrs = [a[0..2].as_ptr(), a[2..4].as_ptr(), a[4..6].as_ptr()];
         let length = 2;
 
         let sos = reusable_slice.from_iter(
@@ -675,11 +675,11 @@ mod test {
     #[test]
     fn from_nested_ptr_mut() {
         let mut reusable_slice = Slice::new();
-        let mut v = vec![1, 2, 3, 4, 5, 6];
+        let mut a = [1, 2, 3, 4, 5, 6];
 
         // Assuming we have a slice of pointers with a known length:
         let length = 2;
-        let ptrs: Vec<*mut _> = v.chunks_exact_mut(length).map(|s| s.as_mut_ptr()).collect();
+        let ptrs: Vec<*mut _> = a.chunks_exact_mut(length).map(|s| s.as_mut_ptr()).collect();
 
         let sos = reusable_slice.from_iter_mut(
             ptrs.iter()
@@ -689,7 +689,7 @@ mod test {
         sos[1][0] = 30;
         sos[1][1] = 40;
         assert_eq!(sos, [[1, 2], [30, 40], [5, 6]]);
-        assert_eq!(v[2..4], [30, 40]);
+        assert_eq!(a[2..4], [30, 40]);
     }
 
     /// Makes sure we use null pointer optimization.
