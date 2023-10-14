@@ -130,6 +130,7 @@
 //! ```
 //! use rsor::Slice;
 //!
+//! /// Creates a slice of slices from a single larger slice.
 //! fn sos_from_flat_slice<'a, 'b>(
 //!     reusable_slice: &'a mut Slice<[f32]>,
 //!     flat_slice: &'b mut [f32],
@@ -164,6 +165,12 @@
 //! To turn these nested pointers into nested slices, we can use something like this:
 //!
 //! ```
+//! /// Creates a slice of slices from a pointer to pointers.
+//! ///
+//! /// # Safety
+//! ///
+//! /// `ptr` must point to `subslices` pointers with a lifetime of at least `'a`,
+//! /// each pointing to `subslice_length` further pointers with a lifetime of at least `'b`.
 //! # use rsor::Slice;
 //! unsafe fn sos_from_nested_pointers<'a, 'b>(
 //!     reusable_slice: &'a mut Slice<[f32]>,
@@ -171,11 +178,13 @@
 //!     subslices: usize,
 //!     subslice_length: usize,
 //! ) -> &'a mut [&'b mut [f32]] {
-//!     let slice_of_ptrs = std::slice::from_raw_parts(ptr, subslices);
+//!     // SAFETY: Correct number and lifetimes of pointers must be guaranteed by caller.
+//!     let slice_of_ptrs = unsafe { std::slice::from_raw_parts(ptr, subslices) };
 //!     reusable_slice.from_iter_mut(
 //!         slice_of_ptrs
 //!             .iter()
-//!             .map(|&ptr| std::slice::from_raw_parts_mut(ptr, subslice_length)),
+//!             // SAFETY: Correct number and lifetimes of pointers must be guaranteed by caller.
+//!             .map(|&ptr| unsafe { std::slice::from_raw_parts_mut(ptr, subslice_length) }),
 //!     )
 //! }
 //! ```
@@ -215,6 +224,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(single_use_lifetimes)]
 #![deny(missing_docs)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use std::mem::ManuallyDrop;
 use std::ptr::NonNull;
@@ -268,7 +278,7 @@ impl<T: ?Sized> Slice<T> {
     /// Creates a new reusable slice with the given capacity.
     pub fn with_capacity(capacity: usize) -> Slice<T> {
         let mut v = ManuallyDrop::new(Vec::with_capacity(capacity));
-        // Safety: Pointer in `Vec` is guaranteed to be non-null.
+        // SAFETY: Pointer in `Vec` is guaranteed to be non-null.
         let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
         Slice {
             vec_data: Some((ptr, v.capacity())),
@@ -380,7 +390,7 @@ impl<T: ?Sized> Slice<T> {
         let v = unsafe { Vec::from_raw_parts(ptr, 0, capacity) };
         let v = f(v); // NB: Re-allocation is possible, this might even return a different Vec!
         let mut v = ManuallyDrop::new(v);
-        // Safety: Pointer in `Vec` is guaranteed to be non-null.
+        // SAFETY: Pointer in `Vec` is guaranteed to be non-null.
         let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
         self.vec_data = Some((ptr.cast(), v.capacity()));
         unsafe { std::slice::from_raw_parts(v.as_ptr(), v.len()) }
@@ -398,7 +408,7 @@ impl<T: ?Sized> Slice<T> {
         let v = unsafe { Vec::from_raw_parts(ptr, 0, capacity) };
         let v = f(v); // NB: Re-allocation is possible, this might even return a different Vec!
         let mut v = ManuallyDrop::new(v);
-        // Safety: Pointer in `Vec` is guaranteed to be non-null.
+        // SAFETY: Pointer in `Vec` is guaranteed to be non-null.
         let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
         self.vec_data = Some((ptr.cast(), v.capacity()));
         unsafe { std::slice::from_raw_parts_mut(v.as_mut_ptr(), v.len()) }
