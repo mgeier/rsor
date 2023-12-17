@@ -1,6 +1,6 @@
 [package]
 name = "rsor"
-version = "0.1.3"
+version = "0.1.4"
 description = "Reusable slice of references"
 readme = "README.md"
 categories = ["data-structures", "rust-patterns"]
