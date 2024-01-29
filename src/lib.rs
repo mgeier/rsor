@@ -178,14 +178,20 @@
 //!     subslices: usize,
 //!     subslice_length: usize,
 //! ) -> &'a mut [&'b mut [f32]] {
-//!     // SAFETY: Correct number and lifetimes of pointers must be guaranteed by caller.
-//!     let slice_of_ptrs = unsafe { std::slice::from_raw_parts(ptr, subslices) };
-//!     reusable_slice.from_iter_mut(
-//!         slice_of_ptrs
-//!             .iter()
+//!     let slice_of_ptrs = if ptr.is_null() {
+//!         &[]
+//!     } else {
+//!         // SAFETY: Correct number and lifetimes of pointers must be guaranteed by caller.
+//!         unsafe { std::slice::from_raw_parts(ptr, subslices) }
+//!     };
+//!     reusable_slice.from_iter_mut(slice_of_ptrs.iter().map(|&ptr| {
+//!         if ptr.is_null() {
+//!             &mut []
+//!         } else {
 //!             // SAFETY: Correct number and lifetimes of pointers must be guaranteed by caller.
-//!             .map(|&ptr| unsafe { std::slice::from_raw_parts_mut(ptr, subslice_length) }),
-//!     )
+//!             unsafe { std::slice::from_raw_parts_mut(ptr, subslice_length) }
+//!         }
+//!     }))
 //! }
 //! ```
 //!
