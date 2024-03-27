@@ -171,13 +171,17 @@
 //!     subslices: usize,
 //!     subslice_length: usize,
 //! ) -> &'a mut [&'b mut [f32]] {
-//!     let slice_of_ptrs = std::ptr::slice_from_raw_parts(ptr, subslices)
-//!         .as_ref()
-//!         .unwrap_or(&[]);
+//!     let slice_of_ptrs = if ptr.is_null() {
+//!         &[]
+//!     } else {
+//!         std::slice::from_raw_parts(ptr, subslices)
+//!     };
 //!     reusable_slice.from_iter_mut(slice_of_ptrs.iter().map(|&ptr| {
-//!         std::ptr::slice_from_raw_parts_mut(ptr, subslice_length)
-//!             .as_mut()
-//!             .unwrap_or(&mut [])
+//!         if ptr.is_null() {
+//!             &mut []
+//!         } else {
+//!             std::slice::from_raw_parts_mut(ptr, subslice_length)
+//!         }
 //!     }))
 //! }
 //! ```
