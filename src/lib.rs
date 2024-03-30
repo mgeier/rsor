@@ -225,6 +225,7 @@
 #![warn(single_use_lifetimes)]
 #![deny(missing_docs)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![doc(test(attr(deny(unsafe_op_in_unsafe_fn))))]
 
 use std::mem::ManuallyDrop;
 use std::ptr::NonNull;
