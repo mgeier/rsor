@@ -8,7 +8,7 @@ Reusable Slice of References
 Usage
 -----
 
-Add this to your `Cargo.toml`:
+Run `cargo add rsor` or manually add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
