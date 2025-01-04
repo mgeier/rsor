@@ -285,8 +285,11 @@ impl<T: ?Sized> Slice<T> {
     /// Creates a new reusable slice with the given capacity.
     pub fn with_capacity(capacity: usize) -> Slice<T> {
         let mut v = ManuallyDrop::new(Vec::with_capacity(capacity));
+        // false positive: https://github.com/rust-lang/rust-clippy/issues/12280
+        #[allow(clippy::incompatible_msrv)]
+        let ptr = v.as_mut_ptr();
         // SAFETY: Pointer in `Vec` is guaranteed to be non-null.
-        let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
+        let ptr = unsafe { NonNull::new_unchecked(ptr) };
         Slice {
             vec_data: Some((ptr, v.capacity())),
         }
@@ -397,10 +400,13 @@ impl<T: ?Sized> Slice<T> {
         let v = unsafe { Vec::from_raw_parts(ptr, 0, capacity) };
         let v = f(v); // NB: Re-allocation is possible, this might even return a different Vec!
         let mut v = ManuallyDrop::new(v);
+        // false positive: https://github.com/rust-lang/rust-clippy/issues/12280
+        #[allow(clippy::incompatible_msrv)]
+        let ptr = v.as_mut_ptr();
         // SAFETY: Pointer in `Vec` is guaranteed to be non-null.
-        let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
+        let ptr = unsafe { NonNull::new_unchecked(ptr) };
         self.vec_data = Some((ptr.cast(), v.capacity()));
-        unsafe { std::slice::from_raw_parts(v.as_ptr(), v.len()) }
+        unsafe { std::slice::from_raw_parts(ptr.as_ptr(), v.len()) }
     }
 
     /// Returns a slice of mutable references that has been filled by the given function.
@@ -415,10 +421,13 @@ impl<T: ?Sized> Slice<T> {
         let v = unsafe { Vec::from_raw_parts(ptr, 0, capacity) };
         let v = f(v); // NB: Re-allocation is possible, this might even return a different Vec!
         let mut v = ManuallyDrop::new(v);
+        // false positive: https://github.com/rust-lang/rust-clippy/issues/12280
+        #[allow(clippy::incompatible_msrv)]
+        let ptr = v.as_mut_ptr();
         // SAFETY: Pointer in `Vec` is guaranteed to be non-null.
-        let ptr = unsafe { NonNull::new_unchecked(v.as_mut_ptr()) };
+        let ptr = unsafe { NonNull::new_unchecked(ptr) };
         self.vec_data = Some((ptr.cast(), v.capacity()));
-        unsafe { std::slice::from_raw_parts_mut(v.as_mut_ptr(), v.len()) }
+        unsafe { std::slice::from_raw_parts_mut(ptr.as_ptr(), v.len()) }
     }
 
     /// Returns a slice of references that has been filled by draining an iterator.
